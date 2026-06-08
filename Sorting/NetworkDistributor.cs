@@ -217,7 +217,7 @@ public static class NetworkDistributor
             {
                 try
                 {
-                    var anchor = ResolveLayoutAnchor(origin, api, room);
+                    var anchor = ResolveLayoutAnchor(containerPositions, api, room);
                     ApplyCompactLayout(containerPositions, anchor, api, cfg);
                 }
                 catch (Exception ex)
@@ -339,29 +339,40 @@ public static class NetworkDistributor
     }
 
     /// <summary>
-    /// Reference point the compaction packs from: the room's door, else a deterministic
-    /// corner when several doors exist, else the triggering chest (open / no room).
+    /// Stable, trigger-independent reference the compaction packs from, so the layout is
+    /// the same whichever chest was just closed:
+    /// • room with door(s) → the lexicographically smallest door ("first door"),
+    ///   deterministic even with several doors;
+    /// • otherwise → the lexicographically smallest container in the network (a fixed
+    ///   "start of the room"), independent of the triggering chest.
     /// </summary>
-    private static BlockPos ResolveLayoutAnchor(BlockPos origin, ICoreServerAPI api, Vintagestory.GameContent.Room? room)
+    private static BlockPos ResolveLayoutAnchor(
+        List<BlockPos> positions, ICoreServerAPI api, Vintagestory.GameContent.Room? room)
     {
-        if (room == null) return origin;
-
-        var loc = room.Location;
-        var doors = new List<BlockPos>();
-        var ba = api.World.BlockAccessor;
-        for (int x = loc.X1; x <= loc.X2 && doors.Count <= 2; x++)
-        for (int y = loc.Y1; y <= loc.Y2 && doors.Count <= 2; y++)
-        for (int z = loc.Z1; z <= loc.Z2 && doors.Count <= 2; z++)
+        if (room != null)
         {
-            var code = ba.GetBlock(new BlockPos(x, y, z))?.Code?.Path;
-            if (code != null && code.Contains("door", StringComparison.OrdinalIgnoreCase))
-                doors.Add(new BlockPos(x, y, z));
+            BlockPos? minDoor = null;
+            var loc = room.Location;
+            var ba = api.World.BlockAccessor;
+            for (int x = loc.X1; x <= loc.X2; x++)
+            for (int y = loc.Y1; y <= loc.Y2; y++)
+            for (int z = loc.Z1; z <= loc.Z2; z++)
+            {
+                var code = ba.GetBlock(new BlockPos(x, y, z))?.Code?.Path;
+                if (code == null || !code.Contains("door", StringComparison.OrdinalIgnoreCase)) continue;
+                var p = new BlockPos(x, y, z);
+                if (minDoor == null || Less(p, minDoor)) minDoor = p;
+            }
+            if (minDoor != null) return minDoor;
         }
 
-        if (doors.Count == 1) return doors[0];                       // single door
-        if (doors.Count >= 2) return new BlockPos(loc.X1, loc.Y1, loc.Z1); // fixed corner
-        return origin;                                              // no door
+        return positions
+            .OrderBy(p => p.X).ThenBy(p => p.Y).ThenBy(p => p.Z)
+            .First();
     }
+
+    private static bool Less(BlockPos a, BlockPos b)
+        => a.X != b.X ? a.X < b.X : a.Y != b.Y ? a.Y < b.Y : a.Z < b.Z;
 
     /// <summary>
     /// Pure compaction layout. Pools all items, sorts and compacts them (same keys as
