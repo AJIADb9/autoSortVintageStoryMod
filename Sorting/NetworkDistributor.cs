@@ -206,10 +206,11 @@ public static class NetworkDistributor
             var containerPositions = ScanContainerPositions(origin, api, cfg, containerGroup, roomFilter);
             if (containerPositions.Count == 0) return;
 
-            // If any container in the network is still open (this player, another player,
-            // or another chest left open), defer: the last one to close triggers the sort.
-            // This avoids reshuffling items out from under someone who is still editing.
-            if (AnyContainerOpen(containerPositions, api, cfg)) return;
+            // If any OTHER container in the network is still open (another player, or
+            // another chest left open), defer: the last one to close triggers the sort.
+            // The just-closed origin is excluded — at this point it may still report
+            // itself as open, which would otherwise block its own sort forever.
+            if (AnyContainerOpen(containerPositions, api, cfg, origin)) return;
 
             // Compaction layout: pool the whole group and pack it into the chests in
             // door-order, leaving trailing chests empty. Replaces the specialist passes.
@@ -484,10 +485,11 @@ public static class NetworkDistributor
     /// True if any container in the network is currently opened by a player. Used to hold
     /// off sorting until the last open container in the room is closed.
     /// </summary>
-    private static bool AnyContainerOpen(List<BlockPos> positions, ICoreServerAPI api, SortConfig cfg)
+    private static bool AnyContainerOpen(List<BlockPos> positions, ICoreServerAPI api, SortConfig cfg, BlockPos exclude)
     {
         foreach (var pos in positions)
         {
+            if (pos.Equals(exclude)) continue;
             if (GetInventory(pos, api, cfg) is InventoryBase inv && inv.openedByPlayerGUIds.Count > 0)
                 return true;
         }
