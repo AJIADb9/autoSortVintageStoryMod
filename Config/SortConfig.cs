@@ -23,6 +23,12 @@ public class SortConfig
     public bool CompactRoom { get; set; } = true;
 
     /// <summary>
+    /// When true, a player's backpack content is sorted when they close their inventory.
+    /// The bag slots (where backpacks are equipped) and the hotbar are never touched.
+    /// </summary>
+    public bool SortPlayerBackpack { get; set; } = true;
+
+    /// <summary>
     /// Euclidean radius (in blocks) of each chest's neighbourhood. The network grows
     /// by cascade: every discovered chest scans its own radius, so the reachable
     /// network can extend well beyond this distance from the origin.

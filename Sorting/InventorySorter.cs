@@ -67,14 +67,21 @@ public static class InventorySorter
     /// VS-aware adapter: reads all slots from <paramref name="inventory"/>,
     /// calls SortItems, writes sorted stacks back, clears trailing slots.
     /// </summary>
-    public static void Sort(IInventory inventory)
+    public static void Sort(IInventory inventory) => SortSlots(inventory.ToList());
+
+    /// <summary>
+    /// Sorts a specific set of slots in place (pool → SortItems → write back, trailing
+    /// slots cleared). Lets callers sort a sub-range of an inventory — e.g. a player's
+    /// backpack content while leaving the bag slots and hotbar untouched.
+    /// </summary>
+    public static void SortSlots(IReadOnlyList<ItemSlot> slotList)
     {
         // Snapshot non-empty slots
         var snapshot = new List<(string Code, int Count, int MaxStack)>();
         // Pre-build a frozen clone lookup BEFORE any write-back (keyed by code → queue of clones)
         var clonePool = new Dictionary<string, Queue<ItemStack>>(StringComparer.Ordinal);
 
-        foreach (var slot in inventory)
+        foreach (var slot in slotList)
         {
             if (slot.Itemstack == null) continue;
             var code = slot.Itemstack.Collectible.Code.Path;
@@ -93,7 +100,6 @@ public static class InventorySorter
         var sorted = SortItems(snapshot);
 
         // Write back using the frozen clone pool
-        var slotList = inventory.ToList();
         int slotIndex = 0;
 
         foreach (var (code, count, _) in sorted)

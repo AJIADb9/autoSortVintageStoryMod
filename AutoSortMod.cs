@@ -101,14 +101,47 @@ public class AutoSortMod : ModSystem
 
     private void OnPlayerNowPlaying(IServerPlayer player)
     {
+        // Re-send the saved overlay preference.
         var data = player.WorldData.GetModdata(OverlayPrefKey);
-        bool enabled = data is { Length: > 0 } && data[0] == 1;
-        if (!enabled) return;
+        if (data is { Length: > 0 } && data[0] == 1)
+        {
+            _overlayByPlayer[player.PlayerUID] = true;
+            // Small delay so the client mod has finished registering its network channel.
+            _api?.Event.RegisterCallback(_ =>
+                _channel?.SendPacket(new OverlayPacket { Enabled = true }, player), 500);
+        }
 
-        _overlayByPlayer[player.PlayerUID] = true;
-        // Small delay so the client mod has finished registering its network channel.
-        _api?.Event.RegisterCallback(_ =>
-            _channel?.SendPacket(new OverlayPacket { Enabled = true }, player), 500);
+        // Sort the player's backpack content when they close their inventory.
+        if (_cfg?.Data.SortPlayerBackpack == true)
+            HookBackpack(player);
+    }
+
+    /// <summary>
+    /// Subscribes once to the player's backpack inventory close so its content is sorted
+    /// when they close their inventory. The bag slots and the hotbar are left untouched.
+    /// </summary>
+    private void HookBackpack(IServerPlayer player)
+    {
+        var backpack = player.InventoryManager?.GetOwnInventory(
+            Vintagestory.API.Config.GlobalConstants.backpackInvClassName);
+        if (backpack is not InventoryBase inv) return;
+        if (_hooked.TryGetValue(inv, out _)) return; // already hooked this inventory instance
+        _hooked.Add(inv, Boxed);
+
+        inv.OnInventoryClosed += _ =>
+        {
+            if (_cfg?.Data.SortPlayerBackpack != true) return;
+            try
+            {
+                // Sort only the real content slots — never the bag-holding slots.
+                var content = inv.Where(s => s is not ItemSlotBackpack).ToList();
+                InventorySorter.SortSlots(content);
+            }
+            catch (Exception ex)
+            {
+                Mod.Logger.Warning($"[AutoSort] Backpack sort error: {ex.Message}");
+            }
+        };
     }
 
     private void OnDidUseBlock(IServerPlayer byPlayer, BlockSelection blockSel)
