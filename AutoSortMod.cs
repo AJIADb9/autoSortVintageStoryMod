@@ -168,7 +168,8 @@ public class AutoSortMod : ModSystem
             c.SpecialisationThreshold = System.Math.Clamp(p.SpecialisationThreshold, 0.1, 1.0);
             if (p.EnabledKinds is { Length: > 0 })
                 c.SupportedInventoryClasses = p.EnabledKinds
-                    .Where(s => !string.IsNullOrWhiteSpace(s)).Distinct().ToList();
+                    .Where(s => !string.IsNullOrWhiteSpace(s))
+                    .Distinct(System.StringComparer.OrdinalIgnoreCase).ToList();
             _cfg.Save();
             _api.Logger.Notification($"[AutoSort] Config updated by {player.PlayerName}.");
         }

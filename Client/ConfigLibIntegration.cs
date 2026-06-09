@@ -63,7 +63,7 @@ public static class ConfigLibIntegration
         _maxChests = cfg.MaxNetworkChests;
         _maxVSpan = cfg.MaxVerticalSpan;
         _threshold = (float)cfg.SpecialisationThreshold;
-        _enabledKinds = cfg.EnabledKinds.ToList();
+        _enabledKinds = cfg.EnabledKinds.Distinct(System.StringComparer.OrdinalIgnoreCase).ToList();
     }
 
     private static void Draw(string id, bool save, AutoSortClientSystem client, ConfigSyncPacket cfg)
@@ -108,8 +108,11 @@ public static class ConfigLibIntegration
             if (ImGui.SmallButton($"x##{id}rm{i}")) { _enabledKinds.RemoveAt(i); i--; }
         }
 
-        // Add from the kinds discovered on the server.
-        var notYet = cfg.DiscoveredKinds.Where(k => !_enabledKinds.Contains(k)).ToArray();
+        // Add from the kinds discovered on the server (case-insensitive exclusion so an
+        // already-enabled kind doesn't also show up in the "add" list).
+        var notYet = cfg.DiscoveredKinds
+            .Where(k => !_enabledKinds.Any(e => string.Equals(e, k, System.StringComparison.OrdinalIgnoreCase)))
+            .ToArray();
         if (notYet.Length > 0)
         {
             if (_selectedDiscovered >= notYet.Length) _selectedDiscovered = 0;
@@ -125,7 +128,8 @@ public static class ConfigLibIntegration
         ImGui.InputText($"##{id}custom", ref _customKind, 64);
         ImGui.SameLine();
         if (ImGui.Button(Lang.Get("autosort:cfg-add") + $"##{id}addcustom") &&
-            !string.IsNullOrWhiteSpace(_customKind) && !_enabledKinds.Contains(_customKind.Trim()))
+            !string.IsNullOrWhiteSpace(_customKind) &&
+            !_enabledKinds.Any(e => string.Equals(e, _customKind.Trim(), System.StringComparison.OrdinalIgnoreCase)))
         {
             _enabledKinds.Add(_customKind.Trim());
             _customKind = "";

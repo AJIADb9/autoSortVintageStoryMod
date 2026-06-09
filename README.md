@@ -28,12 +28,25 @@ across your whole storage room.
   flood-fills the connected network of nearby containers and treats them as a single
   virtual inventory. With `RestrictToSameRoom` enabled (default), a **closed door**
   keeps two storage rooms separate.
+- **Room compaction.** With `CompactRoom` (default), the room is packed from a stable
+  reference (the room's door, else a fixed corner) — chests fill up in order and the far
+  ones are left empty. The reference is the same whichever chest you close.
+- **Floor separation.** `SeparateFloors` (default) detects a solid floor/ceiling layer,
+  so a ladder or open stairwell no longer merges two storeys into one network.
 - **Container types stay separate.** Chests/crates and storage vessels (jars) are sorted
   among their own kind and never mixed.
+- **Backpack sorting.** `SortPlayerBackpack` (default) tidies a player's backpack content
+  when they close their inventory — bag slots and the hotbar are left untouched.
+- **Multiplayer-safe.** When several players or chests in a room are open, only the last
+  one closed triggers the sort, so items never shuffle while someone is editing.
 - **`/sort` overlay.** A read-only HUD that shows the contents of the container you are
   looking at — without opening it. It mirrors the real GUI (title, columns, layout),
   follows changes in real time, hides while a container is open, and remembers your
   preference across reconnects.
+- **In-game settings (ConfigLib).** If the [ConfigLib](https://mods.vintagestory.at/configlib)
+  mod is installed, AutoSort adds a settings screen: a `/sort` overlay switch for every
+  player, plus an admin section to tune the sorting and edit the sorted container list
+  (with server-side auto-discovery of modded containers). Available in English and French.
 
 ## Commands
 
@@ -47,7 +60,7 @@ The overlay is per-player and persists across reconnects and server restarts.
 
 ## Installation
 
-Download `autosort_0.1.0.zip` and drop it in the Vintage Story `Mods/` folder.
+Download `autosort_0.1.1.zip` and drop it in the Vintage Story `Mods/` folder.
 
 - **Server: required.** Installing the mod on the server enables the sorting for
   **everyone**, including players who don't have the mod. A config file `autosort.json`
@@ -69,7 +82,11 @@ client.
 | `SpecialisationThreshold` | `0.70` | Fraction of a chest's items that must share a type for it to be considered a specialist for that type. |
 | `MaxCascadeIterations` | `10` | Maximum number of global re-sort passes per trigger. |
 | `RestrictToSameRoom` | `true` | Keep sorting within the origin chest's enclosed room (closed door separates rooms). Falls back to the full radius when the area is not an enclosed room. |
-| `SupportedInventoryClasses` | `chest`, `largecrate`, `storagevessel` | Container inventory classes that get sorted. |
+| `CompactRoom` | `true` | Pack the room from a stable reference, filling chests in order and leaving far ones empty. |
+| `SeparateFloors` | `true` | Treat chests separated by a solid floor/ceiling layer as different storeys. |
+| `MaxVerticalSpan` | `0` | Optional hard cap on the vertical distance a chest may be from the trigger (0 = off, rely on `SeparateFloors`). |
+| `SortPlayerBackpack` | `true` | Sort a player's backpack content on inventory close (bag slots and hotbar untouched). |
+| `SupportedInventoryClasses` | `chest`, `largecrate`, `storagevessel` | Container block kinds that get sorted (editable in-game via ConfigLib). |
 | `ContainerGroups` | `[chest, largecrate]`, `[storagevessel]` | Groups that never mix during distribution. |
 
 ## How it works
